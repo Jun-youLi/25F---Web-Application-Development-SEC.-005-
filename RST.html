@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Reaction Speed Test</title>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg-100:#0f1115; --bg-200:#151922; --card:#171b25; --muted:#99a1b3; --text:#e9edf5; --primary:#0085ff; --positive:#35d48a; --warning:#ffb020; --danger:#ff5d5d;
+      --radius:18px; --shadow:0 10px 30px rgba(0,0,0,.35);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:radial-gradient(1200px 600px at 70% -10%, #1a2230, transparent),var(--bg-100);color:var(--text);font-family:'Inter',system-ui,Arial,sans-serif;letter-spacing:.1px}
+    .container{max-width:1000px;margin:0 auto;padding:28px}
+    header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px}
+    h1{margin:0;font-weight:800;letter-spacing:.3px;font-size:28px}
+    .tag{font-size:12px;padding:6px 10px;border-radius:999px;background:linear-gradient(180deg,#1e2634,#121722);border:1px solid #222a38;color:#a9b2c5}
+
+    .grid{display:grid;grid-template-columns:1.2fr .8fr;gap:22px}
+    @media (max-width:900px){.grid{grid-template-columns:1fr}}
+
+    .card{background:linear-gradient(180deg,#171c26,#121621);border:1px solid #22293a;border-radius:var(--radius);box-shadow:var(--shadow)}
+    .card h2{margin:0 0 10px 0;font-size:18px}
+    .card .content{padding:20px}
+
+    /* Test area */
+    #arena{aspect-ratio: 16/9; width:100%; border-radius:calc(var(--radius) + 6px); overflow:hidden; position:relative; user-select:none;}
+    #stage{position:absolute; inset:0; display:grid; place-items:center; font-weight:800; font-size:clamp(18px, 4vw, 28px);}
+    .hint{position:absolute; inset:auto 12px 12px 12px; text-align:center; color:var(--muted); font-size:12px}
+
+    .stage-idle{background:linear-gradient(180deg,#151a24,#0f131d)}
+    .stage-wait{background:#21314a}
+    .stage-ready{background:#173a22}
+    .stage-early{background:#3a1717}
+
+    .pill{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:#121722;border:1px solid #20283a;color:#aeb6c8;font-size:12px}
+    .pill b{color:#fff;font-weight:800}
+
+    .controls{display:flex;flex-wrap:wrap;gap:10px}
+    button{appearance:none;border:1px solid #2b3448;background:linear-gradient(180deg,#1c2330,#0f1520);color:#eaf0ff;padding:10px 14px;border-radius:12px;font-weight:600;cursor:pointer;transition:.15s transform,.15s opacity}
+    button:hover{transform:translateY(-1px)}
+    button:active{transform:translateY(0)}
+    button.secondary{background:transparent;color:#c7d0e6}
+    .btn-primary{border-color:#1166aa;background:linear-gradient(180deg,#0f6bd9,#0c45a8)}
+
+    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    @media (max-width:560px){.stats{grid-template-columns:repeat(2,1fr)}}
+    .stat{background:linear-gradient(180deg,#151a25,#111622);border:1px solid #1e2636;border-radius:14px;padding:14px}
+    .stat .label{font-size:12px;color:#9aa3b8}
+    .stat .value{font-weight:800;font-size:22px;margin-top:6px}
+
+    .list{display:flex;flex-direction:column;gap:8px;margin-top:8px;max-height:220px;overflow:auto}
+    .row{display:flex;justify-content:space-between;gap:8px;padding:8px 10px;border:1px solid #212a3a;border-radius:10px;background:#121723}
+
+    .kbd{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; padding:2px 6px; border:1px solid #2a3346; border-bottom-width:3px; border-radius:6px; background:#0e1420; color:#dbe7ff; font-size:12px}
+    footer{margin-top:20px;color:#8f99b0;font-size:12px}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Reaction Speed Test</h1>
+      <span class="tag">Vanilla JS • No Frameworks</span>
+    </header>
+
+    <div class="grid">
+      <section class="card">
+        <div class="content">
+          <h2>Test Arena</h2>
+          <div id="arena" aria-live="polite" aria-label="Reaction test area">
+            <div id="stage" class="stage-idle">
+              <div id="stageText">Click <span class="kbd">Start</span> and wait for green…</div>
+              <div class="hint">Tip: press <span class="kbd">SPACE</span> to click • Early click will reset</div>
+            </div>
+          </div>
+          <div style="height:12px"></div>
+          <div class="controls">
+            <button id="startBtn" class="btn-primary">Start</button>
+            <button id="resetBtn" class="secondary">Reset</button>
+            <button id="saveBtn" class="secondary">Export JSON</button>
+          </div>
+        </div>
+      </section>
+
+      <aside class="card">
+        <div class="content">
+          <h2>Your Stats</h2>
+          <div class="stats">
+            <div class="stat"><div class="label">Attempts</div><div id="attempts" class="value">0</div></div>
+            <div class="stat"><div class="label">Best (ms)</div><div id="best" class="value">—</div></div>
+            <div class="stat"><div class="label">Average (ms)</div><div id="avg" class="value">—</div></div>
+            <div class="stat"><div class="label">Last (ms)</div><div id="last" class="value">—</div></div>
+          </div>
+
+          <h2 style="margin-top:16px">History</h2>
+          <div id="history" class="list" aria-label="Reaction history"></div>
+        </div>
+      </aside>
+    </div>
+
+    <footer>
+      Press <span class="kbd">SPACE</span> or click/tap to react. Early clicks are flagged. Stats are stored in-memory for privacy.
+    </footer>
+  </div>
+
+<script>
+(function(){
+  const stage = document.getElementById('stage');
+  const stageText = document.getElementById('stageText');
+  const startBtn = document.getElementById('startBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const saveBtn = document.getElementById('saveBtn');
+  const attemptsEl = document.getElementById('attempts');
+  const bestEl = document.getElementById('best');
+  const avgEl = document.getElementById('avg');
+  const lastEl = document.getElementById('last');
+  const historyEl = document.getElementById('history');
+
+  let state = 'idle'; // idle | wait | ready
+  let waitTimer = null;
+  let startTime = 0;
+  let results = [];
+
+  function setStage(newState, text){
+    state = newState;
+    stage.className = '';
+    if(newState==='idle') stage.classList.add('stage-idle');
+    if(newState==='wait') stage.classList.add('stage-wait');
+    if(newState==='ready') stage.classList.add('stage-ready');
+    if(newState==='early') stage.classList.add('stage-early');
+    stageText.innerHTML = text;
+  }
+
+  function pickDelay(){
+    // Random wait 800–2500ms
+    return Math.floor(800 + Math.random()*1700);
+  }
+
+  function start(){
+    clearTimeout(waitTimer);
+    setStage('wait', 'Wait for <b>green</b>…');
+    const delay = pickDelay();
+    waitTimer = setTimeout(()=>{
+      startTime = performance.now();
+      setStage('ready', 'GO! Click / press <span class="kbd">SPACE</span>');
+    }, delay);
+  }
+
+  function earlyClick(){
+    clearTimeout(waitTimer);
+    setStage('early', 'Too early! Click <b>Start</b> again.');
+  }
+
+  function recordReaction(){
+    const rt = Math.round(performance.now() - startTime);
+    results.push({ ms: rt, ts: new Date().toISOString() });
+    updateStats();
+    setStage('idle', 'Click <span class="kbd">Start</span> and wait for green…');
+  }
+
+  function updateStats(){
+    attemptsEl.textContent = results.length;
+    if(results.length){
+      const arr = results.map(r=>r.ms);
+      const best = Math.min(...arr);
+      const avg = Math.round(arr.reduce((a,b)=>a+b,0)/arr.length);
+      bestEl.textContent = best;
+      avgEl.textContent = avg;
+      lastEl.textContent = arr[arr.length-1];
+    } else {
+      bestEl.textContent = avgEl.textContent = lastEl.textContent = '—';
+    }
+    renderHistory();
+  }
+
+  function renderHistory(){
+    historyEl.innerHTML = '';
+    results.slice().reverse().forEach((r, idx)=>{
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.innerHTML = `<span>#${results.length - idx}</span><span>${r.ms} ms</span>`;
+      historyEl.appendChild(row);
+    });
+  }
+
+  function reset(){
+    clearTimeout(waitTimer);
+    results = [];
+    updateStats();
+    setStage('idle', 'Click <span class="kbd">Start</span> and wait for green…');
+  }
+
+  function saveJSON(){
+    const blob = new Blob([JSON.stringify({results}, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'reaction_results.json'; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // Interactions
+  startBtn.addEventListener('click', start);
+  resetBtn.addEventListener('click', reset);
+  saveBtn.addEventListener('click', saveJSON);
+
+  // Clicking the stage
+  stage.addEventListener('click', ()=>{
+    if(state==='wait') return earlyClick();
+    if(state==='ready') return recordReaction();
+  });
+
+  // Space key support (accessibility + speed)
+  window.addEventListener('keydown', (e)=>{
+    if(e.code==='Space'){
+      e.preventDefault();
+      if(state==='idle' || state==='early') return start();
+      if(state==='wait') return earlyClick();
+      if(state==='ready') return recordReaction();
+    }
+  });
+
+  // Initial
+  updateStats();
+})();
+</script>
+</body>
+</html>
